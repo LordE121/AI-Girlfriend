@@ -300,9 +300,6 @@ export default function Home() {
 
           {/* Sidebar Footer Controls */}
           <div className="pt-4 border-t border-slate-800 space-y-2">
-            <div className="text-[11px] text-slate-500 text-center">
-              Powered by Google Gemini & Vercel Free
-            </div>
           </div>
         </div>
       </div>
