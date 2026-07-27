@@ -89,7 +89,9 @@ export async function POST(req: NextRequest) {
 
     // Prepare history for Gemini API.
     // Filter last 15 messages to keep context window light and fast on free tier Vercel
-    const conversationHistory = messages.slice(-15).map((m: { role: string; content: string }) => {
+    // Ensure we filter out the static initial "model" message from the beginning of history,
+    // because Gemini requires the conversation history to start with a 'user' message.
+    const mappedHistory = messages.map((m: { role: string; content: string }) => {
       return {
         role: m.role === "user" ? "user" : "model",
         parts: [{ text: m.content }],
@@ -97,12 +99,26 @@ export async function POST(req: NextRequest) {
     });
 
     // The current message is the last item in the history
-    const lastUserMessage = conversationHistory.pop();
+    const lastUserMessage = mappedHistory.pop();
     if (!lastUserMessage || lastUserMessage.role !== "user") {
       return NextResponse.json(
         { error: "Tin nhắn cuối cùng phải là của người dùng." },
         { status: 400 }
       );
+    }
+
+    // Find the first index where role is 'user' so history always starts with user
+    const firstUserIndex = mappedHistory.findIndex(m => m.role === "user");
+    let conversationHistory = firstUserIndex !== -1 ? mappedHistory.slice(firstUserIndex) : [];
+
+    // Keep history concise (last 14 messages + current message = 15 total)
+    if (conversationHistory.length > 14) {
+      conversationHistory = conversationHistory.slice(-14);
+      // Ensure it still starts with a 'user' message
+      const firstUserInTrimmed = conversationHistory.findIndex(m => m.role === "user");
+      if (firstUserInTrimmed !== -1) {
+        conversationHistory = conversationHistory.slice(firstUserInTrimmed);
+      }
     }
 
     // Start a chat session with the conversation history
