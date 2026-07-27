@@ -81,9 +81,9 @@ export async function POST(req: NextRequest) {
     // Initialize Gemini SDK with specified API key
     const ai = new GoogleGenerativeAI(apiKey);
 
-    // Use gemini-2.5-flash as default model (fast, high performance, cost-effective for chat)
+    // Use gemini-1.5-flash as default model (fast, stable, cost-effective for chat)
     const model = ai.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       systemInstruction: systemInstruction,
     });
 
