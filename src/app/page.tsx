@@ -5,15 +5,13 @@ import {
   Heart,
   Send,
   Sparkles,
-  Settings,
   Volume2,
   VolumeX,
   Trash2,
   Menu,
   X,
   User,
-  HeartHandshake,
-  HelpCircle
+  HeartHandshake
 } from "lucide-react";
 
 // Personalities matched with the backend
@@ -76,25 +74,19 @@ export default function Home() {
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [apiKey, setApiKey] = useState("");
-  const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activePersona = PERSONALITIES.find((p) => p.id === activePersonaId) || PERSONALITIES[0];
 
-  // Load API Key on mount and load chats
+  // Load chats on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedKey = localStorage.getItem("ai_girlfriend_gemini_key");
       const savedChats = localStorage.getItem("ai_girlfriend_chats_v1");
 
       // Use a brief timeout to avoid synchronous React 19 / NextJS 16 cascading setState trigger warning in effect body
       setTimeout(() => {
-        if (savedKey) {
-          setApiKey(savedKey);
-        }
         if (savedChats) {
           try {
             const parsed = JSON.parse(savedChats);
@@ -187,7 +179,6 @@ export default function Home() {
             content: m.content,
           })),
           personality: activePersonaId,
-          customApiKey: apiKey || undefined,
         }),
       });
 
@@ -229,11 +220,6 @@ export default function Home() {
     }
   };
 
-  const handleSaveApiKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem("ai_girlfriend_gemini_key", apiKey);
-    setShowSettings(false);
-  };
 
   const handleClearChat = () => {
     if (confirm(`Bạn có chắc chắn muốn xóa lịch sử trò chuyện với ${activePersona.name} không?`)) {
@@ -314,16 +300,6 @@ export default function Home() {
 
           {/* Sidebar Footer Controls */}
           <div className="pt-4 border-t border-slate-800 space-y-2">
-            <button
-              onClick={() => {
-                setShowSettings(true);
-                setSidebarOpen(false);
-              }}
-              className="w-full flex items-center gap-2 p-2.5 rounded-lg hover:bg-slate-800/60 text-sm text-slate-300 hover:text-white transition-colors"
-            >
-              <Settings className="h-4.5 w-4.5" />
-              <span>Cài đặt Gemini API</span>
-            </button>
             <div className="text-[11px] text-slate-500 text-center">
               Powered by Google Gemini & Vercel Free
             </div>
@@ -468,21 +444,6 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Floating helper warning if no API key */}
-        {!apiKey && (
-          <div className="mx-4 md:mx-6 mb-2 p-2 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl flex items-center justify-between text-xs px-3">
-            <span className="flex items-center gap-1.5">
-              <HelpCircle className="h-4 w-4 shrink-0" /> Đang dùng API Key mặc định của hệ thống. Bạn có thể cài đặt API Key riêng để kết nối ổn định hơn.
-            </span>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="underline hover:text-white font-medium shrink-0 ml-2"
-            >
-              Cài đặt ngay
-            </button>
-          </div>
-        )}
-
         {/* Input area Form */}
         <footer className="p-4 md:p-6 bg-slate-950/40 border-t border-slate-800/80">
           <form onSubmit={handleSendMessage} className="flex gap-2">
@@ -504,61 +465,6 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* SETTINGS MODAL / DIALOG */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-pink-500" />
-                <h3 className="font-bold text-base text-slate-100">Cài đặt API Key</h3>
-              </div>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSaveApiKey} className="p-5 space-y-4">
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Để ứng dụng luôn hoạt động ổn định và bảo mật cao, bạn hãy tự tạo API Key từ Google AI Studio (miễn phí) và điền vào đây. API Key này sẽ được lưu an toàn trực tiếp trên trình duyệt của riêng bạn.
-              </p>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                  GEMINI API KEY (AI Studio)
-                </label>
-                <input
-                  type="password"
-                  placeholder="Nhập API Key của bạn (AIzaSy...)"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-pink-500 text-slate-100 placeholder-slate-600"
-                />
-              </div>
-              <div className="flex gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.removeItem("ai_girlfriend_gemini_key");
-                    setApiKey("");
-                    setShowSettings(false);
-                  }}
-                  className="px-4 py-2 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-xl transition-colors"
-                >
-                  Xóa Key
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-pink-500/10"
-                >
-                  Lưu cài đặt
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
