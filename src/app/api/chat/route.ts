@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     // Use gemini-1.5-flash as default model (fast, stable, cost-effective for chat)
     const model = ai.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       systemInstruction: systemInstruction,
     });
 
