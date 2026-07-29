@@ -374,10 +374,10 @@ export default function Home() {
 
         {/* Character banner cards details */}
         <div className={`mx-4 mt-3 p-3 rounded-2xl border flex items-center gap-3 transition-colors ${activePersona.bgClass}`}>
-          <div className={`p-2 rounded-lg bg-white/10 ${activePersona.textClass}`}>
+          <div className={`p-2 rounded-lg bg-slate-500/10 dark:bg-white/10 ${activePersona.textClass}`}>
             <Sparkles className="h-5 w-5" />
           </div>
-          <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-light">
+          <p className="text-xs md:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-light">
             <strong className="font-semibold">{activePersona.name}:</strong> {activePersona.desc}
           </p>
         </div>
