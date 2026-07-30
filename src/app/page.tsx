@@ -151,7 +151,8 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error("Lỗi khi tải audio từ máy chủ");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Lỗi khi tải audio từ máy chủ");
       }
 
       const audioBlob = await response.blob();
@@ -168,6 +169,8 @@ export default function Home() {
     } catch (err) {
       console.error("ElevenLabs TTS Error:", err);
       setTtsLoading(false);
+      const errMsg = err instanceof Error ? err.message : "Có lỗi xảy ra khi phát âm thanh.";
+      alert(`⚠️ Không thể phát giọng nói: ${errMsg}\n\nHướng dẫn: Hãy chắc chắn bạn đã nhập đúng ELEVENLABS_API_KEY trong Environment Variables trên Vercel và đã nhấn Redeploy.`);
     }
   };
 
