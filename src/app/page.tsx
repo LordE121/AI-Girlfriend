@@ -26,6 +26,7 @@ const PERSONALITIES = [
     textClass: "text-pink-600 dark:text-pink-400",
     desc: "Ngọt ngào, chu đáo, thích được quan tâm và luôn dành cho bạn những lời khích lệ ấm áp nhất.",
     initialMessage: "Chào anh yêu! 🌸 Hôm nay của anh thế nào rồi? Kể em nghe với, em nhớ anh lắm đó! ❤️",
+    voiceId: "21m00Tcm4TlvDq8ikWAM", // Rachel (Soft, Sweet)
   },
   {
     id: "tsundere",
@@ -37,6 +38,7 @@ const PERSONALITIES = [
     textClass: "text-amber-600 dark:text-amber-400",
     desc: "Kiêu kỳ, bướng bỉnh, ngoài lạnh trong nóng. Thích giận dỗi nhưng thực ra quan tâm bạn cực kỳ.",
     initialMessage: "Hử? Anh lại tìm em đấy à? 😒 Không phải em đang đợi anh đâu nhé! Nhưng mà... anh ăn uống đầy đủ chưa đấy? 😤",
+    voiceId: "piTKgcLEGmPEeBI4FiZC", // Nicole (Sassy, Sharp)
   },
   {
     id: "caring",
@@ -48,6 +50,7 @@ const PERSONALITIES = [
     textClass: "text-teal-600 dark:text-teal-400",
     desc: "Điềm đạm, chín chắn, luôn thấu hiểu và lắng nghe. Chỗ dựa tinh thần hoàn hảo khi bạn mệt mỏi.",
     initialMessage: "Chào anh. ✨ Em hy vọng anh đã có một ngày bình yên. Nếu có điều gì áp lực hay mệt mỏi, cứ chia sẻ với em nhé, em luôn ở đây lắng nghe anh. 🤗",
+    voiceId: "EXAVITQu4vr4xnSDxMaL", // Bella (Warm, Caring)
   },
   {
     id: "funny",
@@ -59,6 +62,7 @@ const PERSONALITIES = [
     textClass: "text-indigo-600 dark:text-indigo-400",
     desc: "Năng động, thích đùa vui, luôn mang đến tiếng cười cùng nguồn năng lượng tích cực.",
     initialMessage: "Aloooo anh yêu! 🤪 Đoán xem hôm nay ai là người may mắn nhất hành tinh nào? Là anh đó, vì được trò chuyện với một cô bé siêu cấp đáng yêu như em đây! Hahaha 🎉",
+    voiceId: "z9fAnlkFcbv1H977kr48", // Glinda (Bright, Playful)
   },
 ];
 
@@ -76,8 +80,10 @@ export default function Home() {
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const activePersona = PERSONALITIES.find((p) => p.id === activePersonaId) || PERSONALITIES[0];
 
   // Load chats on mount
@@ -110,27 +116,59 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, activePersonaId, isTyping]);
 
-  // Handle Text-To-Speech
-  const speakText = (text: string) => {
-    if (!ttsEnabled || typeof window === "undefined" || !window.speechSynthesis) return;
-
-    // Stop any ongoing speech
-    window.speechSynthesis.cancel();
-
-    // Clean emojis & special tags to make speech sound natural
-    const cleanText = text.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, "");
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "vi-VN"; // Vietnamese accent
-
-    // Attempt to locate a Vietnamese voice if available on the system
-    const voices = window.speechSynthesis.getVoices();
-    const viVoice = voices.find(voice => voice.lang.startsWith("vi"));
-    if (viVoice) {
-      utterance.voice = viVoice;
+  // Stop any ongoing ElevenLabs audio
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
     }
+  };
 
-    window.speechSynthesis.speak(utterance);
+  // Handle Text-To-Speech with ElevenLabs API
+  const speakText = async (text: string, voiceId?: string, forceEnabled = false) => {
+    if (!ttsEnabled && !forceEnabled) return;
+
+    // Stop current speaking audio
+    stopAudio();
+
+    // Clean emojis to optimize synthesis quality & token counts
+    const cleanText = text.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, "").trim();
+    if (!cleanText) return;
+
+    setTtsLoading(true);
+
+    try {
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: cleanText,
+          voiceId: voiceId || activePersona.voiceId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Lỗi khi tải audio từ máy chủ");
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setTtsLoading(false);
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error("ElevenLabs TTS Error:", err);
+      setTtsLoading(false);
+    }
   };
 
   const currentChat = messages[activePersonaId] || [
@@ -274,6 +312,8 @@ export default function Home() {
                       onClick={() => {
                         setActivePersonaId(p.id);
                         setSidebarOpen(false);
+                        stopAudio();
+                        setTtsLoading(false);
                       }}
                       className={`w-full flex items-start gap-3 p-3 rounded-xl transition-all duration-200 text-left relative overflow-hidden group ${
                         isActive
@@ -344,18 +384,25 @@ export default function Home() {
                 if (updated) {
                   // Speak last message as sample
                   const lastBotMsg = [...currentChat].reverse().find(m => m.role === "model");
-                  if (lastBotMsg) speakText(lastBotMsg.content);
-                } else {
-                  if (typeof window !== "undefined" && window.speechSynthesis) {
-                    window.speechSynthesis.cancel();
+                  // Call speakText immediately with forceEnabled flag since state updates asynchronously
+                  if (lastBotMsg) {
+                    setTimeout(() => {
+                      speakText(lastBotMsg.content, undefined, true);
+                    }, 50);
                   }
+                } else {
+                  stopAudio();
+                  setTtsLoading(false);
                 }
               }}
-              title={ttsEnabled ? "Tắt giọng nói" : "Bật giọng nói AI"}
+              disabled={ttsLoading}
+              title={ttsLoading ? "Đang tải giọng nói..." : ttsEnabled ? "Tắt giọng nói" : "Bật giọng nói ElevenLabs"}
               className={`p-2 rounded-xl transition-all duration-200 ${
-                ttsEnabled
-                  ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                  : "bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200"
+                ttsLoading
+                  ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse"
+                  : ttsEnabled
+                    ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                    : "bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200"
               }`}
             >
               {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
